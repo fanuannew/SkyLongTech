@@ -23,6 +23,14 @@
             android:visibility="visible" >
 
             <ImageView
+                android:id="@+id/startimage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:visibility="visible"
+                app:srcCompat="@drawable/loading" />
+
+            <ImageView
                 android:id="@+id/imageP"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"

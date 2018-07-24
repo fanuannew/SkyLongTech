@@ -56,9 +56,14 @@ import java.util.List;
 
 
 public class MainActivity extends AppCompatActivity {
-
+    //打包用的網址跟API字串
+    String webUrl="http://wap.skylongtech.com/wap/dist/#/AppIndex";
+    String apiUrl="http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android";
+    //打包會修改的字串區域結束
+    int start = 0;
     WebView mWebView;
     ImageView progressImag;
+    ImageView LoadingImg;
     AlertDialog.Builder builder;
     AlertDialog dialog;
     MyHandler handler;
@@ -81,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
         // Example of a call to a native method
         mWebView = (WebView) findViewById(R.id.webview);
         progressImag = findViewById(R.id.imageP);
+        LoadingImg = findViewById(R.id.startimage);
         builder = new AlertDialog.Builder(this);
         handler=new MyHandler(); // 宣告handler處理物件
         dialog = builder.create();
@@ -130,12 +136,13 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) { e.printStackTrace();
             Log.d("TRY網址ERROR",e.toString());}
         if(autoUrl=="") {
-            mWebView.loadUrl("http://wap.skylongtech.com/wap/dist/#/AppIndex");
+            mWebView.loadUrl(webUrl); //"http://wap.skylongtech.com/wap/dist/#/AppIndex"
             Log.d("SETTING沒資料",autoUrl);
         }else{
             mWebView.loadUrl(autoUrl);
             Log.d("從小資料庫載入網址",autoUrl);
         }
+
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
@@ -147,14 +154,20 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onPageFinished(WebView view, String url) {
+
                 progressImag.setVisibility(View.GONE);
                 dialog.dismiss();
+                new Handler().postDelayed(new Runnable(){ public void run() { LoadingImg.setVisibility(View.GONE); } }, 1000); //延时5s。
+
                 super.onPageFinished(view, url);
+
+
             }
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 progressImag.setVisibility(View.VISIBLE);
                 dialog.show();
+                //LoadingImg.setVisibility(View.VISIBLE);
                 super.onPageStarted(view, url, favicon);
             }
 
@@ -174,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 Message message;
-                useHttpClientGet("http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android");
+                useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
                 //message = handler.obtainMessage(1,obj);
                 //handler.sendMessage(message);
             }
