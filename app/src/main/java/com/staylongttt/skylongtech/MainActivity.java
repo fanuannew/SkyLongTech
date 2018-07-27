@@ -1,9 +1,13 @@
 package com.staylongttt.skylongtech;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
+import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Message;
@@ -57,7 +61,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     //打包用的網址跟API字串
-    String webUrl="http://wap.skylongtech.com/wap/dist/#/AppIndex";
+    String webUrl="http://wap.skylongtech.com/wap/dist/#/AppIndex?application_key=2001&forapp=Android";
     String apiUrl="http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android";
     //打包會修改的字串區域結束
     int start = 0;
@@ -74,23 +78,31 @@ public class MainActivity extends AppCompatActivity {
     private static final String titleField = "TITLE";
     private static final String urlField = "URL";
     //---小型資料庫宣告結束
+    //---大型資料庫宣告
+    WebErrorReturn WError;
+    //---大型資料庫宣告結束
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //保持螢幕長亮
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT); //限制手機只能豎立
         setContentView(R.layout.activity_main);
         //Log.e("API測試抓取",getWebPage("http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"));
         //Log.e("API測試抓取",getWebPage("http://api.packageday.com/v1/ad/getAdInfoByID","113"));
         useHttpClientGetThread(); //測試httpGET執行緒
         // Example of a call to a native method
+        WError = new WebErrorReturn(getApplicationContext());
+        WError.db = openOrCreateDatabase("records", MODE_PRIVATE, null); //舊: events.db
+        //建立資料庫-------------------------------------資料庫初始化
         mWebView = (WebView) findViewById(R.id.webview);
         progressImag = findViewById(R.id.imageP);
         LoadingImg = findViewById(R.id.startimage);
         builder = new AlertDialog.Builder(this);
         handler=new MyHandler(); // 宣告handler處理物件
+
         dialog = builder.create();
-        dialog.setMessage("服务器连线中");
+
         String autoUrl=""; //轉存網址暫存字串
         WebSettings webSettings = mWebView.getSettings();
         //mWebView.setWebChromeClient(new WebChromeClient()); //設定chrome為wevview的核心
@@ -146,8 +158,24 @@ public class MainActivity extends AppCompatActivity {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                try
+                {
+                    if ((!url.startsWith("weixin://")) && (!url.startsWith("alipays://")) && (!url.startsWith("alipay")) && (!url.startsWith("mailto://")) && (!url.startsWith("tel://"))) //判斷需不需要跳轉其他APP
+                    {
+                        boolean bool = url.startsWith("dianping://");
+                        if (!bool)
+                        {
+                            //view.loadUrl(url);
+                            mWebView.loadUrl(url);
+                            return true;
+                        }
+                    }
+                    startActivity(new Intent("android.intent.action.VIEW", Uri.parse(url)));
+                    return true;
+                }
+                catch (Exception paramAnonymousWebView) {}
                 mWebView.setBackgroundColor(0);
-                mWebView.loadUrl(url);
+                //mWebView.loadUrl(url);
 
                 //mWebView.loadData(url, "text/html", "UTF-8");  // load the webview
                 return true;
@@ -170,24 +198,54 @@ public class MainActivity extends AppCompatActivity {
                 //LoadingImg.setVisibility(View.VISIBLE);
                 super.onPageStarted(view, url, favicon);
             }
+            @Override
+            public void onReceivedError(WebView view, int errorCode,
+            String description, String failingUrl) { //接收到錯誤網頁的反應處理
+                super.onReceivedError(view, errorCode, description, failingUrl);
+                dialog.setMessage("加载失敗...");
+                Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
+                //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
+                //view.loadData(errorHtml, "text/html", "UTF-8");
+                WError.netype="";
+                WError.webcode= String.valueOf(errorCode);
+                WError.status = description + "失敗存取的網頁: " + failingUrl;
+                WError.nspeed = "";
+                WError.ping = "";
+                WError.ping = "";
+                WError.ip = "";
+                ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
+                Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents()));
+                LoadingImg.setVisibility(View.VISIBLE);
+
+            }
 
 
-
-
-        });
+         });
 
 
 
 
 
     }
-    private void useHttpClientGetThread() {
+    private void useHttpClientGetThread() { //使用另一個執行緒去抓取API
         String jsontext;
         new Thread(new Runnable() {
             @Override
             public void run() {
                 Message message;
                 useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
+                //message = handler.obtainMessage(1,obj);
+                //handler.sendMessage(message);
+            }
+        }).start();
+    }
+    private void ErrorToDatabaseThread() { //使用另一個執行緒把錯誤寫入資料庫
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Message message;
+                //WError.createTable();
+                WError.InsertDB("now");
                 //message = handler.obtainMessage(1,obj);
                 //handler.sendMessage(message);
             }
@@ -272,7 +330,7 @@ public class MainActivity extends AppCompatActivity {
         return resp;
     }
 
-    private void useHttpClientPost(String url) {
+    private void useHttpClientPost(String url) {   //Json POST的方法.POST的方法.POST的方法.POST的方法.POST的方法
         HttpPost mHttpPost = new HttpPost(url);
         mHttpPost.addHeader("Connection", "Keep-Alive");
         try {
@@ -342,9 +400,9 @@ public class MainActivity extends AppCompatActivity {
         //mWebView.getUrl();
         String name[]={"AppIndex"};
         //實作回首頁app時reloading首頁
-        for(int i=0;i<1;i++){
+        /*for(int i=0;i<1;i++){
             if(mWebView.getUrl().indexOf(name[i])>0){mWebView.reload();}
-        }
+        }*/
 
     }
     @Override
@@ -527,7 +585,7 @@ public class MainActivity extends AppCompatActivity {
     }
     //thread傳值結束
     //小型資料庫讀取寫入區
-    public String readUrlData(){
+    public String readUrlData(){ //讀出API轉址URL的資料
         String url="";
         settings = getSharedPreferences(data,0);
         //settings.getString(idField, "");
