@@ -70,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
     ImageView LoadingImg;
     AlertDialog.Builder builder;
     AlertDialog dialog;
+    AlertDialog dialogWarning;
     MyHandler handler;
     //----小型資料庫宣告
     private SharedPreferences settings;
@@ -102,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
         handler=new MyHandler(); // 宣告handler處理物件
 
         dialog = builder.create();
+        dialog.setMessage("加载中...");
+        dialogWarning = builder.create();
 
         String autoUrl=""; //轉存網址暫存字串
         WebSettings webSettings = mWebView.getSettings();
@@ -202,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
             public void onReceivedError(WebView view, int errorCode,
             String description, String failingUrl) { //接收到錯誤網頁的反應處理
                 super.onReceivedError(view, errorCode, description, failingUrl);
-                dialog.setMessage("加载失敗...");
+                dialogWarning.setMessage("加载失敗...");
                 Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
                 //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
                 //view.loadData(errorHtml, "text/html", "UTF-8");
@@ -214,9 +217,9 @@ public class MainActivity extends AppCompatActivity {
                 WError.ping = "";
                 WError.ip = "";
                 ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
-                Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents()));
-                LoadingImg.setVisibility(View.VISIBLE);
-
+                //Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents())); //偵錯時才打開，輸出資料庫所有資料
+                mWebView.setVisibility(View.GONE);
+                dialogWarning.show();
             }
 
 
@@ -409,6 +412,8 @@ public class MainActivity extends AppCompatActivity {
     public void onBackPressed() {
         if (mWebView.canGoBack() & mWebView.getUrl().indexOf("AppIndex")<0) {
             mWebView.goBack();
+        }else if(mWebView.getVisibility()==View.GONE){ //加載失敗情況下就結束activity
+            this.finish();
         } else {
             //super.onBackPressed();
             moveTaskToBack(true);
