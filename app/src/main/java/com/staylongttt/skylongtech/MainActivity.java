@@ -81,6 +81,7 @@ public class MainActivity extends AppCompatActivity {
     //---小型資料庫宣告結束
     //---大型資料庫宣告
     WebErrorReturn WError;
+    NetworkDetect ndtest;
     //---大型資料庫宣告結束
 
     @Override
@@ -96,6 +97,10 @@ public class MainActivity extends AppCompatActivity {
         WError = new WebErrorReturn(getApplicationContext());
         WError.db = openOrCreateDatabase("records", MODE_PRIVATE, null); //舊: events.db
         //建立資料庫-------------------------------------資料庫初始化
+        //測試網路狀態偵測
+        ndtest = new NetworkDetect(getApplicationContext());
+        Log.d("取得IP測試: ", ndtest.getRealIP(getApplicationContext()));
+        //測試網路狀態偵測結束
         mWebView = (WebView) findViewById(R.id.webview);
         progressImag = findViewById(R.id.imageP);
         LoadingImg = findViewById(R.id.startimage);
@@ -203,19 +208,18 @@ public class MainActivity extends AppCompatActivity {
             }
             @Override
             public void onReceivedError(WebView view, int errorCode,
-            String description, String failingUrl) { //接收到錯誤網頁的反應處理
+            String description, String failingUrl) { //接收到錯誤網頁的反應處理--------------------------------------------收到錯誤網頁
                 super.onReceivedError(view, errorCode, description, failingUrl);
                 dialogWarning.setMessage("加载失敗...");
                 Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
                 //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
                 //view.loadData(errorHtml, "text/html", "UTF-8");
-                WError.netype="";
+                WError.netype= ndtest.getNetwrokType(getApplicationContext());
                 WError.webcode= String.valueOf(errorCode);
-                WError.status = description + "失敗存取的網頁: " + failingUrl;
+                WError.status = description + "，访问失败的页面: " + failingUrl;
                 WError.nspeed = "";
                 WError.ping = "";
-                WError.ping = "";
-                WError.ip = "";
+                WError.ip = ndtest.getRealIP(getApplicationContext());
                 ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
                 //Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents())); //偵錯時才打開，輸出資料庫所有資料
                 mWebView.setVisibility(View.GONE);
@@ -242,7 +246,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
     }
-    private void ErrorToDatabaseThread() { //使用另一個執行緒把錯誤寫入資料庫
+    private void ErrorToDatabaseThread() { //使用另一個執行緒把錯誤寫入資料庫-------------寫入錯誤
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -376,7 +380,7 @@ public class MainActivity extends AppCompatActivity {
         return respose;
     }
 
-    private void useHttpUrlConnectionPost(String url) {
+    private void useHttpUrlConnectionPost(String url) { //使用POST連接API的方法
         InputStream mInputStream = null;
         HttpURLConnection mHttpURLConnection = UrlConnManager.getHttpURLConnection(url);
         try {

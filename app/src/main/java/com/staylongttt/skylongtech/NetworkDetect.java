@@ -23,14 +23,43 @@ class NetworkDetect {
     NetworkDetect(Context context){
 
     }
-
+    public String getNetwrokType(Context context){ //取得是用哪一種網路
+        String type="";
+        try {
+            if (isNetworkConnected(context)) {
+                if (isMobileDataEnable(context)) {
+                    type = "移动网络";
+                }
+                if(isWifiDataEnable(context)){
+                    type = "wifi网络";
+                }
+            }
+        }catch (Exception e){
+            type = "無法取得网络";}
+        return type;
+    }
+    public String getRealIP(Context context){ //不管使用什麼網路，只要有連線就取得IP
+        String returnIP="";
+        try {
+            if (isNetworkConnected(context)) {
+                if (isMobileDataEnable(context)) {
+                    returnIP = getMobileIP();
+                }
+                if(isWifiDataEnable(context)){
+                    returnIP = getWifiIP(context);
+                }
+            }
+        }catch (Exception e){
+            returnIP = "無法取得IP";
+        }return returnIP;
+    }
 
     public static boolean isNetworkConnected(Context ct) { //檢查是否有網路可用
         ConnectivityManager cm = (ConnectivityManager) ct.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo ni = cm.getActiveNetworkInfo();
         return ni != null && ni.isConnectedOrConnecting();
     }
-    public static boolean isMobileDataEnable(Context context) throws Exception {
+    public static boolean isMobileDataEnable(Context context) throws Exception { //測試是不是用4G/3G類的網路
         ConnectivityManager connectivityManager = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean isMobileDataEnable = false;
@@ -41,7 +70,7 @@ class NetworkDetect {
         return isMobileDataEnable;
     }
 
-    public static boolean isWifiDataEnable(Context context) throws Exception {
+    public static boolean isWifiDataEnable(Context context) throws Exception { //偵測WIFI有沒有連上並使用網路
         ConnectivityManager connectivityManager = (ConnectivityManager) context
                 .getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean isWifiDataEnable = false;
@@ -92,7 +121,7 @@ class NetworkDetect {
             while((content = in.readLine()) !=null) {
                 stringBuffer.append(content);
             }
-            Log.i("TTT","result content : "+ stringBuffer.toString());
+            Log.i("測試PING輸出","result content : "+ stringBuffer.toString());
             int status = p.waitFor();
             if(status ==0) {
                 result ="successful~";
