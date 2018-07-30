@@ -57,6 +57,10 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -83,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
     WebErrorReturn WError;
     NetworkDetect ndtest;
     //---大型資料庫宣告結束
+    //------API接收處理宣告
+    APIGetPost ApiPasser;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,8 +104,9 @@ public class MainActivity extends AppCompatActivity {
         WError.db = openOrCreateDatabase("records", MODE_PRIVATE, null); //舊: events.db
         //建立資料庫-------------------------------------資料庫初始化
         //測試網路狀態偵測
+        ApiPasser = new APIGetPost();
         ndtest = new NetworkDetect(getApplicationContext());
-        Log.d("取得IP測試: ", ndtest.getRealIP(getApplicationContext()));
+        //Log.d("取得PINGPING測試: ", ndtest.ping());
         //測試網路狀態偵測結束
         mWebView = (WebView) findViewById(R.id.webview);
         progressImag = findViewById(R.id.imageP);
@@ -229,28 +236,38 @@ public class MainActivity extends AppCompatActivity {
 
          });
 
-
-
-
-
     }
     private void useHttpClientGetThread() { //使用另一個執行緒去抓取API
         String jsontext;
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Message message;
-                useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
+
+                String object12 = ApiPasser.useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
+                Message message=new Message(); //宣告一個傳值的媒介-信差
+                message.obj = object12;
+                message.what=1;
+                handler.sendMessage(message);
                 //message = handler.obtainMessage(1,obj);
                 //handler.sendMessage(message);
             }
         }).start();
     }
+    public ScheduledExecutorService scheduExec = Executors.newScheduledThreadPool(1); //使用ScheduledExecutorService來製作android計時器的功能
+    public void ErrorDataTimer() { //計時回傳錯誤資料
+        final Runnable task = new Runnable() {
+            @Override
+            public void run() {
+                throw new RuntimeException();
+            }
+        };
+        scheduExec.scheduleWithFixedDelay(task, 3 * 60, 10 * 60,
+                TimeUnit.SECONDS); //Runnable command,long initialDelay,long delay,TimeUnit unit //初始3分鐘後執行，之後每隔10分鐘後執行
+    }
     private void ErrorToDatabaseThread() { //使用另一個執行緒把錯誤寫入資料庫-------------寫入錯誤
         new Thread(new Runnable() {
             @Override
             public void run() {
-                Message message;
                 //WError.createTable();
                 WError.InsertDB("now");
                 //message = handler.obtainMessage(1,obj);
@@ -269,136 +286,10 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         };*/
-    /**
-     * HttpUrlConnection POST请求网络
-     */
-    /*private void useHttpUrlConnectionGetThread() {
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                useHttpUrlConnectionPost("http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android");
-            }
-        }).start();
-    }*/
 
 
-    /**
-     * 设置默认请求参数，并返回HttpClient
-     *
-     * @return HttpClient
-     */
-    private HttpClient createHttpClient() {
-        HttpParams mDefaultHttpParams = new BasicHttpParams();
-        //设置连接超时
-        HttpConnectionParams.setConnectionTimeout(mDefaultHttpParams, 15000);
-        //设置请求超时
-        HttpConnectionParams.setSoTimeout(mDefaultHttpParams, 15000);
-        HttpConnectionParams.setTcpNoDelay(mDefaultHttpParams, true);
-        HttpProtocolParams.setVersion(mDefaultHttpParams, HttpVersion.HTTP_1_1);
-        HttpProtocolParams.setContentCharset(mDefaultHttpParams, HTTP.UTF_8);
-        //持续握手
-        HttpProtocolParams.setUseExpectContinue(mDefaultHttpParams, true);
-        HttpClient mHttpClient = new DefaultHttpClient(mDefaultHttpParams);
-        return mHttpClient;
-
-    }
-
-    /**
-     * 使用HttpClient的get请求网络
-     *
-     * @param url
-     */
-
-    private String useHttpClientGet(String url) { //HTTP GET的方法，用於API接口
-        HttpGet mHttpGet = new HttpGet(url);
-        String resp =null;
-        mHttpGet.addHeader("Connection", "Keep-Alive");
-        try {
-            HttpClient mHttpClient = createHttpClient();
-            HttpResponse mHttpResponse = mHttpClient.execute(mHttpGet);
-            HttpEntity mHttpEntity = mHttpResponse.getEntity();
-            Message message=new Message(); //宣告一個傳值的媒介-信差
-            int code = mHttpResponse.getStatusLine().getStatusCode();
-            if (null != mHttpEntity) {
-                InputStream mInputStream = mHttpEntity.getContent();
-                String respose = converStreamToString(mInputStream);
-                Log.i("wangshu", "請求狀態:" + code + "\n請求結果:\n" + respose);
-                //Log.d("HTTP請求GET:" , respose);
-                resp = respose;
-                message.obj=respose; //使用message obj來當信差
-                message.what=1;
-                handler.sendMessage(message);
-                mInputStream.close();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return resp;
-    }
-
-    private void useHttpClientPost(String url) {   //Json POST的方法.POST的方法.POST的方法.POST的方法.POST的方法
-        HttpPost mHttpPost = new HttpPost(url);
-        mHttpPost.addHeader("Connection", "Keep-Alive");
-        try {
-            HttpClient mHttpClient = createHttpClient();
-            List<NameValuePair> postParams = new ArrayList<>();
-            //要传递的参数
-            postParams.add(new BasicNameValuePair("username", "moon"));
-            postParams.add(new BasicNameValuePair("password", "123"));
-            mHttpPost.setEntity(new UrlEncodedFormEntity(postParams));
-            HttpResponse mHttpResponse = mHttpClient.execute(mHttpPost);
-            HttpEntity mHttpEntity = mHttpResponse.getEntity();
-            int code = mHttpResponse.getStatusLine().getStatusCode();
-            if (null != mHttpEntity) {
-                InputStream mInputStream = mHttpEntity.getContent();
-                String respose = converStreamToString(mInputStream);
-                Log.i("wangshu", "請求狀態:" + code + "\n請求結果:\n" + respose);
-                mInputStream.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
 
-    /**
-     * 将请求结果装潢为String类型
-     *
-     * @param is InputStream
-     * @return String
-     * @throws IOException
-     */
-    private String converStreamToString(InputStream is) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        StringBuffer sb = new StringBuffer();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line + "\n");
-        }
-        String respose = sb.toString();
-        return respose;
-    }
-
-    private void useHttpUrlConnectionPost(String url) { //使用POST連接API的方法
-        InputStream mInputStream = null;
-        HttpURLConnection mHttpURLConnection = UrlConnManager.getHttpURLConnection(url);
-        try {
-            List<NameValuePair> postParams = new ArrayList<>();
-            //要传递的参数
-            postParams.add(new BasicNameValuePair("username", "moon"));
-            postParams.add(new BasicNameValuePair("password", "123"));
-            UrlConnManager.postParams(mHttpURLConnection.getOutputStream(), postParams);
-            mHttpURLConnection.connect();
-            mInputStream = mHttpURLConnection.getInputStream();
-            int code = mHttpURLConnection.getResponseCode();
-            String respose = converStreamToString(mInputStream);
-            Log.i("API回傳", "請求狀態:" + code + "\n請求結果:\n" + respose);
-            mInputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
     @Override
     protected void onResume() {
         super.onResume();
@@ -562,7 +453,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
     //thread之前傳值
-    class MyHandler extends Handler
+    class MyHandler extends Handler //處理json收到資料之後解析的問題
     {
         //接受message的信息
         @Override

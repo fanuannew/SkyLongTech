@@ -109,7 +109,37 @@ class NetworkDetect {
         }
         return null;
     }
-    public static final boolean ping() { //ping的實作方法
+    public static String getOuterIP() { //取得外部IP的方法
+        String result =null;
+        try{
+            String ip ="www.baidu.com";
+            Process p = Runtime.getRuntime().exec("dig +short myip.opendns.com @resolver1.opendns.com");
+            InputStream input = p.getInputStream();
+            BufferedReader in =new BufferedReader(new InputStreamReader(input));
+            StringBuffer stringBuffer =new StringBuffer();
+            String content ="";
+            while((content = in.readLine()) !=null) {
+                stringBuffer.append(content);
+            }
+            Log.i("測試外部IP結果","IP : "+ stringBuffer.toString());
+            int status = p.waitFor();
+            if(status ==0) {
+                result ="successful~";
+                return stringBuffer.toString();
+            }else{
+                result ="failed~ cannot reach the IP address";
+            }
+        }catch(IOException e) {
+            result ="failed~ IOException";
+        }catch(InterruptedException e) {
+            result ="failed~ InterruptedException";
+        }finally{
+            Log.i("TTT","result = "+ result);
+        }
+        return "失敗";
+    }
+
+    public static String ping() { //ping的實作方法
         String result =null;
         try{
             String ip ="www.baidu.com";
@@ -125,7 +155,7 @@ class NetworkDetect {
             int status = p.waitFor();
             if(status ==0) {
                 result ="successful~";
-                return true;
+                return stringBuffer.toString();
             }else{
                 result ="failed~ cannot reach the IP address";
             }
@@ -136,6 +166,6 @@ class NetworkDetect {
         }finally{
             Log.i("TTT","result = "+ result);
         }
-        return false;
+        return "TTT: "+result;
     }
 }
