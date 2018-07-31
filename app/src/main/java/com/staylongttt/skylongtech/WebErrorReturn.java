@@ -22,15 +22,17 @@ import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+
 public class WebErrorReturn {
     SQLite dbase;
     SQLiteDatabase db;
     String ind1 = "", netype = "";
     String webcode = "", status = "", nspeed = "", ping = "", device = "", ip = "";
-
+    APIGetPost apigt;
 
     WebErrorReturn(Context ac) { //初始使用的宣告
         dbase = new SQLite(ac);
+        apigt = new APIGetPost();
         //int ind1=0,ind2=0;
     }
 
@@ -60,88 +62,65 @@ public class WebErrorReturn {
                 null // ORDOR BY
         );
     }
-    private String SearchEvents(Cursor cursor,String idt) { //搜尋功能，在這暫時用不到
+    public HashMap uploadErrorData(String apiurl) { //讀出本地資料庫，上傳到伺服器
         //String ret = new String("Saved Events:\n\n");
+        Cursor cursor = getEvents();
         String[] values = new String[50];
         final String[] itempos = new String[80];
         ListView listView;
         //===========================Dialog initial=====================
-        /*Dialog dialog = new Dialog(WebErrorReturn.this);
+        //Dialog dialog = new Dialog(WebErrorReturn.this);
         //dialog.setContentView(R.layout.listview1);
         //listView = (ListView) dialog.findViewById(R.id.listviewcon);
-        ArrayList<HashMap<String, Object>> listItem = new ArrayList<HashMap<String, Object>>();
+        //ArrayList<HashMap<String, Object>> listItem = new ArrayList<HashMap<String, Object>>();
         int numb1 = 0;
         String id = "", index1 = "", index2 = "", region = "", title1 = "", title2 = "", title3 = "";
         //String timy = "", timm = "", timd = "", timh = "", timn = "";22020968
         int rows_num = cursor.getCount();
         //listItem = new ArrayList<HashMap<String, Object>>();
+
+        String objName[] = {"network_state","http_status", "status_remark","net_speed","ping_value","user_device","user_ip"}; //宣告要回傳POST的欄位
+        HashMap<String, String> map = new HashMap<String, String>();
         cursor.moveToFirst();
         for (int i = 0; i < rows_num; i++) {
             //HashMap<String, Object> map = new HashMap<String, Object>();
             id = cursor.getString(0);
             index1 = cursor.getString(1);
-            index2 = cursor.getString(2);
-            region = cursor.getString(3);
-            title1 = cursor.getString(4);
-            title2 = cursor.getString(5);
-            title3 = cursor.getString(6);
-            //Log.v("Values", "values: "+ index1+"|"+index2+"|"+region+"|"+title1+"|"+title2+"|"+title3);//印出數值到LOG
+            values[0] = cursor.getString(2);
+            values[1] = cursor.getString(3);
+            values[2] = cursor.getString(4);
+            values[3] = cursor.getString(5);
+            values[4] = cursor.getString(6);
+            values[5] = cursor.getString(7);
+            values[6] = cursor.getString(8);
+            for(int j=0;j<objName.length;j++) {
+                map.put(objName[j], values[j]);
+            }
+            Log.d("測試讀出資料庫", i+ "values: " + values[i]);
+            useHttpClientPostThread(apiurl, map); //使用執行序去處理HTTP-POST
             try{
-                if (title1.indexOf(idt)>-1 | title2.indexOf(idt)>-1) {
-                    //values[numb1] = title1+" vs. "+title2;//依序排列出字串標題
-                    Log.v("Store", title1+" vs. "+title2);
-                    values[numb1] = title1+" vs. "+title2;
-                    itempos[numb1] = id;
-                    numb1++;
-                }
+                db.delete(SQLite.TABLE, SQLite._ID +"=" + i, null); //刪除傳出去的欄位
             }catch(Exception e){
                 e.printStackTrace();
             }
-
-
             cursor.moveToNext();
         }
         cursor.close();
         //=============================================================================
-        for (int i = 0; i < numb1; i++) {
-            HashMap<String, Object> map = new HashMap<String, Object>();
-            map.put("ItemText", values[i]);
-            Log.v("Himi", "values: "+ values[i]);
-            listItem.add(map);
-        }
-        SpecialAdapter listItemAdapter = new SpecialAdapter(WebErrorReturn.this, listItem,// 数据源
-                R.layout.list_items,// ListItem的XML实现
-                // 动态数组与ImageItem对应的子项
-                new String[] { "ItemText", "Itemtype", "Itemvalue",
-                        "Itemunit", "Itemdate" },
-                // ImageItem的XML文件里面的一个ImageView,两个TextView ID
-                new int[] { R.id.ItemText, R.id.Itemtype,
-                        R.id.Itemvalue, R.id.Itemunit, R.id.Itemdate });
-        listView.setDivider(null);
-        listView.setAdapter(listItemAdapter);
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view,
-                                    int position, long id) {
-                int pos = position;
-                Bundle bundle = new Bundle();
-                bundle.putInt("position",pos );
-                bundle.putInt("index2",post );
-                bundle.putInt("index1",7 );
-                bundle.putInt("id", Integer.valueOf(itempos[pos]) );//<<------------------------
-                Intent intent = new Intent();
-                intent.putExtras(bundle);
-                //intent.setClass(ChinesetranslationActivity.this, content01.class);
-                //startActivity(intent);
-                WebErrorReturn.this.onPause();
-            }
-        });
-        //==============================================================================
 
-        dialog.setCancelable(true);
-        dialog.setTitle("搜尋結果");
-        dialog.show();*/
-        return "";
+        return map;
+    }
+    private void useHttpClientPostThread(final String apiurl, final HashMap map) { //使用另一個執行緒去抓取API
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                APIGetPost apipasser2 = new APIGetPost();
+                apipasser2.useHttpClientPost(apiurl, map); //使用POST傳送值到API
+            }
+        }).start();
+    }
+    public  void clearDB(){
+        db.execSQL("DROP TABLE IF EXISTS records"); //清除資料庫所有資料
     }
     public void InsertDB(String record) // 把結果存入資料庫
     {

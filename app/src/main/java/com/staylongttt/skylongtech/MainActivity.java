@@ -88,7 +88,7 @@ public class MainActivity extends AppCompatActivity {
     NetworkDetect ndtest;
     //---大型資料庫宣告結束
     //------API接收處理宣告
-    APIGetPost ApiPasser;
+    String errorApi = ""; //錯誤回傳先解析所屬網域
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,10 +101,10 @@ public class MainActivity extends AppCompatActivity {
         useHttpClientGetThread(); //測試httpGET執行緒
         // Example of a call to a native method
         WError = new WebErrorReturn(getApplicationContext());
+        //WError.clearDB();//清除資料庫
         WError.db = openOrCreateDatabase("records", MODE_PRIVATE, null); //舊: events.db
         //建立資料庫-------------------------------------資料庫初始化
         //測試網路狀態偵測
-        ApiPasser = new APIGetPost();
         ndtest = new NetworkDetect(getApplicationContext());
         //Log.d("取得PINGPING測試: ", ndtest.ping());
         //測試網路狀態偵測結束
@@ -153,21 +153,35 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         //webSettings.setUserAgentString("Mozilla/5.0 (Linux; U; Android 2.2; en-gb; Nexus One Build/FRF50) AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1");
         mWebView.requestFocus();
+        ErrorDataTimer(); //間隔執行------------------------------------------------間隔執行
         //判斷資料庫有無先前API取得首頁的資料
-        try {
-            Log.d("TRY網址",autoUrl);
-            if(readUrlData()!=null) {
-                autoUrl = readUrlData();
-                Log.d("TRY網址2",autoUrl);
+        if(ndtest.isNetworkConnected(getApplication())) {
+            try {
+                Log.d("TRY網址", autoUrl);
+                if (readUrlData() != null) {
+                    autoUrl = readUrlData();
+                    errorApi = autoUrl.substring(0,autoUrl.indexOf("/",9))+"/v1/ettm/set_mobile_phone_info";
+                    Log.d("TRY網址2", autoUrl);
+                    Log.d("TRY網址3:ErrorAPI", errorApi);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.d("TRY網址ERROR", e.toString());
             }
-        } catch (Exception e) { e.printStackTrace();
-            Log.d("TRY網址ERROR",e.toString());}
-        if(autoUrl=="") {
-            mWebView.loadUrl(webUrl); //"http://wap.skylongtech.com/wap/dist/#/AppIndex"
-            Log.d("SETTING沒資料",autoUrl);
-        }else{
-            mWebView.loadUrl(autoUrl);
-            Log.d("從小資料庫載入網址",autoUrl);
+            if (autoUrl == "") {
+                mWebView.loadUrl(webUrl); //"http://wap.skylongtech.com/wap/dist/#/AppIndex"
+                Log.d("SETTING沒資料", autoUrl);
+            } else {
+                mWebView.loadUrl(autoUrl);
+                Log.d("從小資料庫載入網址", autoUrl);
+            }
+        }else{ //如果無網路的話 顯示網路錯誤
+            mWebView.loadUrl("");
+            mWebView.setVisibility(View.GONE);
+            passError(404,  "沒有連線到網路",  "Homepage");
+            dialogWarning.setMessage("目前無可用網絡...");
+            dialogWarning.show();
+            LoadingImg.setVisibility(View.VISIBLE);
         }
 
         mWebView.setWebViewClient(new WebViewClient() {
@@ -221,14 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
                 //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
                 //view.loadData(errorHtml, "text/html", "UTF-8");
-                WError.netype= ndtest.getNetwrokType(getApplicationContext());
-                WError.webcode= String.valueOf(errorCode);
-                WError.status = description + "，访问失败的页面: " + failingUrl;
-                WError.nspeed = "";
-                WError.ping = "";
-                WError.ip = ndtest.getRealIP(getApplicationContext());
-                ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
-                //Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents())); //偵錯時才打開，輸出資料庫所有資料
+                passError(errorCode,  description,  failingUrl); //傳址準備寫入SQLite資料庫
                 mWebView.setVisibility(View.GONE);
                 dialogWarning.show();
             }
@@ -237,15 +244,23 @@ public class MainActivity extends AppCompatActivity {
          });
 
     }
+    private void passError(int errorCode, String description, String failingUrl){ //處理錯誤訊息整理之後傳值到後端處理
+        WError.netype= ndtest.getNetwrokType(getApplicationContext());
+        WError.webcode= String.valueOf(errorCode);
+        WError.status = description + "，访问失败的页面: " + failingUrl;
+        WError.nspeed = "";
+        WError.ping = "";
+        WError.ip = ndtest.getRealIP(getApplicationContext());
+        ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
+        Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents())); //偵錯時才打開，輸出資料庫所有資料
+    }
     private void useHttpClientGetThread() { //使用另一個執行緒去抓取API
-        String jsontext;
         new Thread(new Runnable() {
             @Override
             public void run() {
-
-                String object12 = ApiPasser.useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
+                APIGetPost ApiPasser1 = new APIGetPost();
                 Message message=new Message(); //宣告一個傳值的媒介-信差
-                message.obj = object12;
+                message.obj = ApiPasser1.useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
                 message.what=1;
                 handler.sendMessage(message);
                 //message = handler.obtainMessage(1,obj);
@@ -258,10 +273,12 @@ public class MainActivity extends AppCompatActivity {
         final Runnable task = new Runnable() {
             @Override
             public void run() {
-                throw new RuntimeException();
+                Log.d("進入到計畫任務: ","計畫任務開始");
+                WError.uploadErrorData(errorApi);
+
             }
         };
-        scheduExec.scheduleWithFixedDelay(task, 3 * 60, 10 * 60,
+        scheduExec.scheduleWithFixedDelay(task, 10, 10 * 60,
                 TimeUnit.SECONDS); //Runnable command,long initialDelay,long delay,TimeUnit unit //初始3分鐘後執行，之後每隔10分鐘後執行
     }
     private void ErrorToDatabaseThread() { //使用另一個執行緒把錯誤寫入資料庫-------------寫入錯誤
