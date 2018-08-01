@@ -97,9 +97,13 @@ public class WebErrorReturn {
                 map.put(objName[j], values[j]);
             }
             Log.d("測試讀出資料庫", i+ "values: " + values[i]);
-            useHttpClientPostThread(apiurl, map); //使用執行序去處理HTTP-POST
+            //useHttpClientPostThread(apiurl, map); //使用執行序去處理HTTP-POST
+            APIGetPost apipasser2 = new APIGetPost();
+            boolean sucess = apipasser2.useHttpClientPost(apiurl, map); //使用POST傳送值到API
             try{
-                db.delete(SQLite.TABLE, SQLite._ID +"=" + i, null); //刪除傳出去的欄位
+                if(sucess){
+                    db.delete(SQLite.TABLE, SQLite._ID +"=" + id, null); //刪除傳出去的欄位
+                }
             }catch(Exception e){
                 e.printStackTrace();
             }

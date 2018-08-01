@@ -100,7 +100,7 @@ public class APIGetPost {
         return resp;
     }
 
-    public void useHttpClientPost(String url, HashMap map) {   //Json POST的方法.POST的方法.POST的方法.POST的方法.POST的方法
+    public boolean useHttpClientPost(String url, HashMap map) {   //Json POST的方法.POST的方法.POST的方法.POST的方法.POST的方法
         HttpPost mHttpPost = new HttpPost(url);
         mHttpPost.addHeader("Connection", "Keep-Alive");
         try {
@@ -120,11 +120,14 @@ public class APIGetPost {
                 String respose = converStreamToString(mInputStream);
                 Log.d("POST", "請求狀態:" + code + "\n請求結果:\n" + respose);
                 mInputStream.close();
+                if(code ==200){return true;}
             }
         } catch (IOException e) {
             e.printStackTrace();
             Log.d("HTTP-POST錯誤", e.toString());
+            return false;
         }
+        return false;
     }
     /**
      * 将请求结果装潢为String类型

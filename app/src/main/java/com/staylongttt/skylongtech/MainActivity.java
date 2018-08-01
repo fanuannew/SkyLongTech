@@ -106,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         //建立資料庫-------------------------------------資料庫初始化
         //測試網路狀態偵測
         ndtest = new NetworkDetect(getApplicationContext());
-        //Log.d("取得PINGPING測試: ", ndtest.ping());
+        //Log.d("取得PINGPING測試: ",  ndtest.ping());
         //測試網路狀態偵測結束
         mWebView = (WebView) findViewById(R.id.webview);
         progressImag = findViewById(R.id.imageP);
@@ -178,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
         }else{ //如果無網路的話 顯示網路錯誤
             mWebView.loadUrl("");
             mWebView.setVisibility(View.GONE);
-            passError(404,  "沒有連線到網路",  "Homepage");
+            passError(400,  "沒有連線到網路",  "Homepage", "127.0.0.1"); //先規劃網路無連線的話不寫入資料庫做紀錄
             dialogWarning.setMessage("目前無可用網絡...");
             dialogWarning.show();
             LoadingImg.setVisibility(View.VISIBLE);
@@ -235,7 +235,7 @@ public class MainActivity extends AppCompatActivity {
                 Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
                 //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
                 //view.loadData(errorHtml, "text/html", "UTF-8");
-                passError(errorCode,  description,  failingUrl); //傳址準備寫入SQLite資料庫
+                passError(errorCode,  description,  failingUrl, ""); //傳址準備寫入SQLite資料庫
                 mWebView.setVisibility(View.GONE);
                 dialogWarning.show();
             }
@@ -244,13 +244,15 @@ public class MainActivity extends AppCompatActivity {
          });
 
     }
-    private void passError(int errorCode, String description, String failingUrl){ //處理錯誤訊息整理之後傳值到後端處理
+    private void passError(int errorCode, String description, String failingUrl, String IP){ //處理錯誤訊息整理之後傳值到後端處理
         WError.netype= ndtest.getNetwrokType(getApplicationContext());
         WError.webcode= String.valueOf(errorCode);
         WError.status = description + "，访问失败的页面: " + failingUrl;
         WError.nspeed = "";
         WError.ping = "";
-        WError.ip = ndtest.getRealIP(getApplicationContext());
+        WError.device = "android_APP";
+        if(IP==""){WError.ip = ndtest.getRealIP(getApplicationContext());}
+        else{WError.ip = IP;}
         ErrorToDatabaseThread(); //使用新執行緒把錯誤寫入到資料庫
         Log.d("Cursor Object輸出所有: ", DatabaseUtils.dumpCursorToString(WError.getEvents())); //偵錯時才打開，輸出資料庫所有資料
     }
@@ -263,6 +265,7 @@ public class MainActivity extends AppCompatActivity {
                 message.obj = ApiPasser1.useHttpClientGet(apiUrl); //"http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"
                 message.what=1;
                 handler.sendMessage(message);
+                Log.d("PING在thread裡測試",ndtest.ping());
                 //message = handler.obtainMessage(1,obj);
                 //handler.sendMessage(message);
             }
@@ -273,9 +276,10 @@ public class MainActivity extends AppCompatActivity {
         final Runnable task = new Runnable() {
             @Override
             public void run() {
-                Log.d("進入到計畫任務: ","計畫任務開始");
-                WError.uploadErrorData(errorApi);
-
+                if(ndtest.isNetworkConnected(getApplication())) {
+                    Log.d("進入到計畫任務: ", "計畫任務開始");
+                    WError.uploadErrorData(errorApi);
+                }
             }
         };
         scheduExec.scheduleWithFixedDelay(task, 10, 10 * 60,
@@ -286,6 +290,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 //WError.createTable();
+                WError.ping = ndtest.ping();
                 WError.InsertDB("now");
                 //message = handler.obtainMessage(1,obj);
                 //handler.sendMessage(message);

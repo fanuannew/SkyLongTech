@@ -15,13 +15,14 @@ import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.Enumeration;
 
 class NetworkDetect {
      //Context ct;
-
+    Context ct;
     NetworkDetect(Context context){
-
+        ct =context;
     }
     public String getNetwrokType(Context context){ //取得是用哪一種網路
         String type="";
@@ -125,47 +126,38 @@ class NetworkDetect {
             int status = p.waitFor();
             if(status ==0) {
                 result ="successful~";
-                return stringBuffer.toString();
+                //return stringBuffer.toString();
             }else{
                 result ="failed~ cannot reach the IP address";
             }
+
         }catch(IOException e) {
-            result ="failed~ IOException";
+            //result ="failed~ IOException";
         }catch(InterruptedException e) {
-            result ="failed~ InterruptedException";
+            //result ="failed~ InterruptedException";
         }finally{
-            Log.i("TTT","result = "+ result);
+            Log.i("TTT","result = "+ "暫時無result");
         }
+
         return "失敗";
     }
 
-    public static String ping() { //ping的實作方法
-        String result =null;
-        try{
-            String ip ="www.baidu.com";
-            Process p = Runtime.getRuntime().exec("ping -c 2 -w 100 "+ ip); //ping3次
-            InputStream input = p.getInputStream();
-            BufferedReader in =new BufferedReader(new InputStreamReader(input));
-            StringBuffer stringBuffer =new StringBuffer();
-            String content ="";
-            while((content = in.readLine()) !=null) {
-                stringBuffer.append(content);
+    public String  ping() { //ping的實作方法
+        long delay = 0;
+        boolean isArrived;
+        if(isNetworkConnected(ct)) {
+            try {
+                long startTime = System.currentTimeMillis();
+                InetAddress address = InetAddress.getByName("www.baidu.com");
+                isArrived = address.isReachable(800);
+                delay = System.currentTimeMillis() - startTime;
+                String ip = address.getHostAddress();
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            Log.i("測試PING輸出","result content : "+ stringBuffer.toString());
-            int status = p.waitFor();
-            if(status ==0) {
-                result ="successful~";
-                return stringBuffer.toString();
-            }else{
-                result ="failed~ cannot reach the IP address";
-            }
-        }catch(IOException e) {
-            result ="failed~ IOException";
-        }catch(InterruptedException e) {
-            result ="failed~ InterruptedException";
-        }finally{
-            Log.i("TTT","result = "+ result);
         }
-        return "TTT: "+result;
+        return Long.toString(delay);
     }
 }
