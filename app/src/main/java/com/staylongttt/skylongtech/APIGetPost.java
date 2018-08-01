@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -109,7 +110,7 @@ public class APIGetPost {
             //要传递的参数
             for (Object key : map.keySet()) { //讀出所有MAP裡面資料
                 System.out.println(key + " : " + map.get(key));
-                postParams.add(new BasicNameValuePair(key.toString(), map.get(key).toString()));
+                postParams.add(new BasicNameValuePair(URLEncoder.encode(key.toString()), URLEncoder.encode(map.get(key).toString())));
             }
             mHttpPost.setEntity(new UrlEncodedFormEntity(postParams));
             HttpResponse mHttpResponse = mHttpClient.execute(mHttpPost);

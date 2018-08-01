@@ -147,9 +147,9 @@ class NetworkDetect {
         boolean isArrived;
         if(isNetworkConnected(ct)) {
             try {
-                long startTime = System.currentTimeMillis();
                 InetAddress address = InetAddress.getByName("www.baidu.com");
-                isArrived = address.isReachable(800);
+                long startTime = System.currentTimeMillis();
+                isArrived = address.isReachable(100);
                 delay = System.currentTimeMillis() - startTime;
                 String ip = address.getHostAddress();
             } catch (UnknownHostException e) {
