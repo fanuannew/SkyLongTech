@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.res.Resources;
 import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -178,7 +179,7 @@ public class MainActivity extends AppCompatActivity {
         }else{ //如果無網路的話 顯示網路錯誤
             mWebView.loadUrl("");
             mWebView.setVisibility(View.GONE);
-            passError(400,  "没有连线到网絡",  "Homepage", "127.0.0.1"); //先規劃網路無連線的話不寫入資料庫做紀錄
+            passError(503,  "没有连线到网絡",  "Homepage", "127.0.0.1"); //先規劃網路無連線的話不寫入資料庫做紀錄
             dialogWarning.setMessage("目前無可用網絡...");
             dialogWarning.show();
             LoadingImg.setVisibility(View.VISIBLE);
