@@ -144,7 +144,7 @@ class NetworkDetect {
 
     public String  ping() { //ping的實作方法
         long delay = 0;
-        boolean isArrived;
+        boolean isArrived = false;
         if(isNetworkConnected(ct)) {
             try {
                 InetAddress address = InetAddress.getByName("www.baidu.com");
@@ -158,6 +158,8 @@ class NetworkDetect {
                 e.printStackTrace();
             }
         }
-        return Long.toString(delay);
+        if(!isArrived){return "none";}
+        else{
+        return Long.toString(delay);}
     }
 }

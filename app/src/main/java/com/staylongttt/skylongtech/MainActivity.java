@@ -1,12 +1,15 @@
 package com.staylongttt.skylongtech;
 
 import android.app.AlertDialog;
+import android.app.DownloadManager;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.res.Resources;
 import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -24,6 +27,7 @@ import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.WebViewClient;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -45,6 +49,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -54,6 +59,8 @@ import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -243,6 +250,44 @@ public class MainActivity extends AppCompatActivity {
 
 
          });
+        // 长按点击事件
+        mWebView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                final WebView.HitTestResult hitTestResult = mWebView.getHitTestResult();
+                // 如果是图片类型或者是带有图片链接的类型
+                if (hitTestResult.getType() == WebView.HitTestResult.IMAGE_TYPE ||
+                        hitTestResult.getType() == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
+                    // 弹出保存图片的对话框
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setTitle("提示");
+                    builder.setMessage("保存图片到本地");
+                    builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            final String picUrl = hitTestResult.getExtra();//获取图片链接
+                            //保存图片到相册
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    url2bitmap(picUrl);
+                                }
+                            }).start();
+                        }
+                    });
+                    builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                        // 自动dismiss
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                        }
+                    });
+                    AlertDialog dialog = builder.create();
+                    dialog.show();
+                    return true;
+                }
+                return false;//保持长按可以复制文字
+            }
+        });
 
     }
     private void passError(int errorCode, String description, String failingUrl, String IP){ //處理錯誤訊息整理之後傳值到後端處理
@@ -309,7 +354,38 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         };*/
-
+    public void url2bitmap(String url) {
+        Bitmap bm = null;
+        try {
+            URL iconUrl = new URL(url);
+            URLConnection conn = iconUrl.openConnection();
+            HttpURLConnection http = (HttpURLConnection) conn;
+            int length = http.getContentLength();
+            conn.connect();
+            // 获得图像的字符流
+            InputStream is = conn.getInputStream();
+            BufferedInputStream bis = new BufferedInputStream(is, length);
+            bm = BitmapFactory.decodeStream(bis);
+            bis.close();
+            is.close();
+            if (bm != null) {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                request.allowScanningByMediaScanner(); //设置图片的保存路径
+                request.setDestinationInExternalFilesDir(MainActivity.this, "/img", "/a.png");
+                DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                downloadManager.enqueue(request);
+                Toast.makeText(getApplicationContext(), "保存成功", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), "保存失败", Toast.LENGTH_SHORT).show();
+                }
+            });
+            e.printStackTrace();
+        }
+    }
 
 
 
