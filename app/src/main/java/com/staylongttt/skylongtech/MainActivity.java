@@ -1,11 +1,15 @@
 package com.staylongttt.skylongtech;
 
+import android.Manifest;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
@@ -13,8 +17,11 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -22,6 +29,8 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import android.view.WindowManager;
+import android.webkit.DownloadListener;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
@@ -116,7 +125,9 @@ public class MainActivity extends AppCompatActivity {
         ndtest = new NetworkDetect(getApplicationContext());
         //Log.d("取得PINGPING測試: ",  ndtest.ping());
         //測試網路狀態偵測結束
-        mWebView = (WebView) findViewById(R.id.webview);
+        mWebView = new InWebView(MainActivity.this);
+        mWebView =  findViewById(R.id.mywebview);
+
         progressImag = findViewById(R.id.imageP);
         LoadingImg = findViewById(R.id.startimage);
         builder = new AlertDialog.Builder(this);
@@ -247,15 +258,21 @@ public class MainActivity extends AppCompatActivity {
                 mWebView.setVisibility(View.GONE);
                 dialogWarning.show();
             }
-
-
          });
-        // 长按点击事件
-        mWebView.setOnLongClickListener(new View.OnLongClickListener() {
+        mWebView.setDownloadListener(new DownloadListener() {
+
             @Override
-            public boolean onLongClick(View view) {
+            public void onDownloadStart(final String url, String userAgent,
+                                        String contentDisposition, String mimetype,
+                                        long contentLength) {
+                DownloadManager.Request request = new DownloadManager.Request(
+                        Uri.parse(url));
                 final WebView.HitTestResult hitTestResult = mWebView.getHitTestResult();
-                // 如果是图片类型或者是带有图片链接的类型
+                request.allowScanningByMediaScanner();
+                //request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED); //Notify client once download is completed!
+                //request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Name of your downloadble file goes here, example: Mathematics II ");
+                //DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+                //dm.enqueue(request);
                 if (hitTestResult.getType() == WebView.HitTestResult.IMAGE_TYPE ||
                         hitTestResult.getType() == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
                     // 弹出保存图片的对话框
@@ -265,12 +282,13 @@ public class MainActivity extends AppCompatActivity {
                     builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialogInterface, int i) {
+                            url2bitmap(url);
                             final String picUrl = hitTestResult.getExtra();//获取图片链接
                             //保存图片到相册
                             new Thread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    url2bitmap(picUrl);
+                                    //url2bitmap(picUrl);
                                 }
                             }).start();
                         }
@@ -283,8 +301,23 @@ public class MainActivity extends AppCompatActivity {
                     });
                     AlertDialog dialog = builder.create();
                     dialog.show();
-                    return true;
+                    if (Build.VERSION.SDK_INT >= 23) {
+                        if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                                == PackageManager.PERMISSION_GRANTED) {
+                            Log.e("Permission error","You have permission");
+                        } else {
+
+                            Log.e("Permission error","You have asked for permission");
+                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+                        }
+                    }
                 }
+            }
+        });
+        // 长按点击事件
+        mWebView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
                 return false;//保持长按可以复制文字
             }
         });
@@ -354,29 +387,26 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         };*/
-    public void url2bitmap(String url) {
+    public void url2bitmap(String url) { //下載圖片存到手機
         Bitmap bm = null;
         try {
-            URL iconUrl = new URL(url);
-            URLConnection conn = iconUrl.openConnection();
-            HttpURLConnection http = (HttpURLConnection) conn;
-            int length = http.getContentLength();
-            conn.connect();
-            // 获得图像的字符流
-            InputStream is = conn.getInputStream();
-            BufferedInputStream bis = new BufferedInputStream(is, length);
-            bm = BitmapFactory.decodeStream(bis);
-            bis.close();
-            is.close();
-            if (bm != null) {
-                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                request.allowScanningByMediaScanner(); //设置图片的保存路径
-                request.setDestinationInExternalFilesDir(MainActivity.this, "/img", "/a.png");
-                DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
-                downloadManager.enqueue(request);
-                Toast.makeText(getApplicationContext(), "保存成功", Toast.LENGTH_SHORT).show();
-            }
+            //URL iconUrl = new URL(url);
+
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.allowScanningByMediaScanner(); //设置图片的保存路径
+
+            //request.setDestinationInExternalFilesDir(MainActivity.this, "/img", "/png");
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "QRcode.png");
+            request.setTitle("QRcode"); //request.setDescription("下载中通知栏提示");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE | DownloadManager.Request.NETWORK_WIFI);
+            request.setVisibleInDownloadsUi(true);
+            DownloadManager downloadManager = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            downloadManager.enqueue(request);
+            Toast.makeText(getApplicationContext(), "保存成功", Toast.LENGTH_SHORT).show();
+            //}
         } catch (Exception e) {
+            Log.d("保存失敗錯誤LOG: ", e.toString());
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
@@ -414,48 +444,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public String getWebPage(final String url,final String param1) {
 
-        Runnable runnable;
-        Handler newHandler;
-
-
-
-        newHandler = new Handler();
-        runnable = new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    List<BasicNameValuePair> params = new LinkedList<BasicNameValuePair>();
-
-                    //HttpResponse httpResponse =null;
-                    params = new LinkedList<BasicNameValuePair>();
-                    params.add(new BasicNameValuePair("adid", param1));
-                    params.add(new BasicNameValuePair("source", "android"));
-                    HttpPost postMethod = new HttpPost(url);
-                    postMethod.setEntity(new UrlEncodedFormEntity(params, "utf-8")); //将参数填入POST Entity中
-                    HttpClient httpClient = new DefaultHttpClient();
-                    HttpResponse httpResponse = httpClient.execute(postMethod); //执行POST方法
-
-                    //Log.i(TAG, "resCode = " + response.getStatusLine().getStatusCode()); //获取响应码
-                    //Log.i(TAG, "result = " + EntityUtils.toString(response.getEntity(), "utf-8")); //获取响应内容
-
-                } catch (UnsupportedEncodingException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (ClientProtocolException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
-        };
-        runnable.run();
-        //return httpResponse.getEntity().toString();
-        return "";
-    }
     public String getWebPage(String url) {
         String encodeUrl="";
         HttpClient httpClient = new DefaultHttpClient();
