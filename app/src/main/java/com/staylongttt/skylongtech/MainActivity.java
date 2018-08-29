@@ -125,19 +125,17 @@ public class MainActivity extends AppCompatActivity {
         ndtest = new NetworkDetect(getApplicationContext());
         //Log.d("取得PINGPING測試: ",  ndtest.ping());
         //測試網路狀態偵測結束
-        mWebView = new InWebView(MainActivity.this);
-        mWebView =  findViewById(R.id.mywebview);
-
+        mWebView = findViewById(R.id.mywebview);
         progressImag = findViewById(R.id.imageP);
         LoadingImg = findViewById(R.id.startimage);
         builder = new AlertDialog.Builder(this);
-        handler=new MyHandler(); // 宣告handler處理物件
+        handler = new MyHandler(); // 宣告handler處理物件
 
         dialog = builder.create();
         dialog.setMessage("加载中...");
         dialogWarning = builder.create();
 
-        String autoUrl=""; //轉存網址暫存字串
+        String autoUrl = ""; //轉存網址暫存字串
         WebSettings webSettings = mWebView.getSettings();
         //mWebView.setWebChromeClient(new WebChromeClient()); //設定chrome為wevview的核心
         webSettings.setBuiltInZoomControls(false);
@@ -174,12 +172,12 @@ public class MainActivity extends AppCompatActivity {
         mWebView.requestFocus();
         ErrorDataTimer(); //間隔執行------------------------------------------------間隔執行
         //判斷資料庫有無先前API取得首頁的資料
-        if(ndtest.isNetworkConnected(getApplication())) {
+        if (ndtest.isNetworkConnected(getApplication())) {
             try {
                 Log.d("TRY網址", autoUrl);
                 if (readUrlData() != null) {
                     autoUrl = readUrlData();
-                    errorApi = autoUrl.substring(0,autoUrl.indexOf("/",9))+"/v1/ettm/set_mobile_phone_info";
+                    errorApi = autoUrl.substring(0, autoUrl.indexOf("/", 9)) + "/v1/ettm/set_mobile_phone_info";
                     Log.d("TRY網址2", autoUrl);
                     Log.d("TRY網址3:ErrorAPI", errorApi);
                 }
@@ -194,10 +192,10 @@ public class MainActivity extends AppCompatActivity {
                 mWebView.loadUrl(autoUrl);
                 Log.d("從小資料庫載入網址", autoUrl);
             }
-        }else{ //如果無網路的話 顯示網路錯誤
+        } else { //如果無網路的話 顯示網路錯誤
             mWebView.loadUrl("");
             mWebView.setVisibility(View.GONE);
-            passError(503,  "没有连线到网絡",  "Homepage", "127.0.0.1"); //先規劃網路無連線的話不寫入資料庫做紀錄
+            passError(503, "没有连线到网絡", "Homepage", "127.0.0.1"); //先規劃網路無連線的話不寫入資料庫做紀錄
             dialogWarning.setMessage("目前無可用網絡...");
             dialogWarning.show();
             LoadingImg.setVisibility(View.VISIBLE);
@@ -206,13 +204,11 @@ public class MainActivity extends AppCompatActivity {
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                try
-                {
+                try {
                     if ((!url.startsWith("weixin://")) && (!url.startsWith("alipays://")) && (!url.startsWith("alipay")) && (!url.startsWith("mailto://")) && (!url.startsWith("tel://"))) //判斷需不需要跳轉其他APP
                     {
                         boolean bool = url.startsWith("dianping://");
-                        if (!bool)
-                        {
+                        if (!bool) {
                             //view.loadUrl(url);
                             mWebView.loadUrl(url);
                             return true;
@@ -220,25 +216,30 @@ public class MainActivity extends AppCompatActivity {
                     }
                     startActivity(new Intent("android.intent.action.VIEW", Uri.parse(url)));
                     return true;
+                } catch (Exception paramAnonymousWebView) {
                 }
-                catch (Exception paramAnonymousWebView) {}
                 mWebView.setBackgroundColor(0);
                 //mWebView.loadUrl(url);
 
                 //mWebView.loadData(url, "text/html", "UTF-8");  // load the webview
                 return true;
             }
+
             @Override
             public void onPageFinished(WebView view, String url) {
-
                 progressImag.setVisibility(View.GONE);
                 dialog.dismiss();
-                new Handler().postDelayed(new Runnable(){ public void run() { LoadingImg.setVisibility(View.GONE); } }, 1000); //延时5s。
+                new Handler().postDelayed(new Runnable() {
+                    public void run() {
+                        LoadingImg.setVisibility(View.GONE);
+                    }
+                }, 1000); //延时5s。
 
                 super.onPageFinished(view, url);
 
 
             }
+
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 progressImag.setVisibility(View.VISIBLE);
@@ -246,19 +247,20 @@ public class MainActivity extends AppCompatActivity {
                 //LoadingImg.setVisibility(View.VISIBLE);
                 super.onPageStarted(view, url, favicon);
             }
+
             @Override
             public void onReceivedError(WebView view, int errorCode,
-            String description, String failingUrl) { //接收到錯誤網頁的反應處理--------------------------------------------收到錯誤網頁
+                                        String description, String failingUrl) { //接收到錯誤網頁的反應處理--------------------------------------------收到錯誤網頁
                 super.onReceivedError(view, errorCode, description, failingUrl);
                 dialogWarning.setMessage("加载失敗...");
-                Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode="+errorCode+" \ndescription="+description+" \nfailingUrl="+failingUrl);
+                Log.d("網頁ERROR輸出", "-MyWebViewClient->onReceivedError()--\n errorCode=" + errorCode + " \ndescription=" + description + " \nfailingUrl=" + failingUrl);
                 //这里进行无网络或错误处理，具体可以根据errorCode的值进行判断，做跟详细的处理。
                 //view.loadData(errorHtml, "text/html", "UTF-8");
-                passError(errorCode,  description,  failingUrl, ""); //傳址準備寫入SQLite資料庫
+                passError(errorCode, description, failingUrl, ""); //傳址準備寫入SQLite資料庫
                 mWebView.setVisibility(View.GONE);
                 dialogWarning.show();
             }
-         });
+        });
         mWebView.setDownloadListener(new DownloadListener() {
 
             @Override
@@ -276,52 +278,83 @@ public class MainActivity extends AppCompatActivity {
                 if (hitTestResult.getType() == WebView.HitTestResult.IMAGE_TYPE ||
                         hitTestResult.getType() == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
                     // 弹出保存图片的对话框
-                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
-                    builder.setTitle("提示");
-                    builder.setMessage("保存图片到本地");
-                    builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            url2bitmap(url);
-                            final String picUrl = hitTestResult.getExtra();//获取图片链接
-                            //保存图片到相册
-                            new Thread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    //url2bitmap(picUrl);
-                                }
-                            }).start();
-                        }
-                    });
-                    builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
-                        // 自动dismiss
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                        }
-                    });
-                    AlertDialog dialog = builder.create();
-                    dialog.show();
-                    if (Build.VERSION.SDK_INT >= 23) {
-                        if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                                == PackageManager.PERMISSION_GRANTED) {
-                            Log.e("Permission error","You have permission");
-                        } else {
-
-                            Log.e("Permission error","You have asked for permission");
-                            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-                        }
-                    }
+                    downloadmanager(url,hitTestResult.getExtra());
                 }
             }
         });
+
         // 长按点击事件
         mWebView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
-            public boolean onLongClick(View view) {
-                return false;//保持长按可以复制文字
+            public boolean onLongClick(View v) {
+                //Toast.makeText(getApplicationContext(), "長按測試.....", Toast.LENGTH_SHORT).show();
+                WebView.HitTestResult result = ((WebView) v).getHitTestResult();
+                int type = result.getType();
+                /*if (null == result)
+                    return false;
+
+                if (type == WebView.HitTestResult.UNKNOWN_TYPE)
+                    return false;
+                if (type == WebView.HitTestResult.EDIT_TEXT_TYPE) {
+
+                }*/
+                // 相应长按事件弹出菜单
+//                ItemLongClickedPopWindow itemLongClickedPopWindow = new ItemLongClickedPopWindow(MainActivity.this,
+//                        ItemLongClickedPopWindow.IMAGE_VIEW_POPUPWINDOW,
+//                        SizeUtil.dp2px(mContext, 120), SizeUtil.dp2px(mContext, 90));
+
+                // 这里可以拦截很多类型，我们只处理图片类型就可以了
+                if(type == WebView.HitTestResult.IMAGE_TYPE ||type ==  WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE){ // 处理长按图片的菜单项
+                        // 获取图片的路径
+                        //saveImgUrl = result.getExtra();
+                        //通过GestureDetector获取按下的位置，来定位PopWindow显示的位置
+                        //itemLongClickedPopWindow.showAtLocation(v, Gravity.TOP | Gravity.LEFT, downX, downY + 10);
+                        Log.d("contex選單: ","True");
+                    downloadmanager(result.getExtra(),result.getExtra());
+                    //Toast.makeText(getApplicationContext(), "照片存檔測試中.....", Toast.LENGTH_SHORT).show();
+                }
+
+                return true;
+            }
+
+        });
+    }
+    private void downloadmanager(final String url,final String imgurl){
+        AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+        builder.setTitle("提示");
+        builder.setMessage("保存图片到本地");
+        builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                url2bitmap(url);
+                String picUrl = imgurl; //hitTestResult.getExtra();//获取图片链接
+                //保存图片到相册
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        //url2bitmap(picUrl);
+                    }
+                }).start();
             }
         });
+        builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+            // 自动dismiss
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+            }
+        });
+        AlertDialog dialog = builder.create();
+        dialog.show();
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.e("Permission error", "You have permission");
+            } else {
 
+                Log.e("Permission error", "You have asked for permission");
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+            }
+        }
     }
     private void passError(int errorCode, String description, String failingUrl, String IP){ //處理錯誤訊息整理之後傳值到後端處理
         WError.netype= ndtest.getNetwrokType(getApplicationContext());

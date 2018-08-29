@@ -32,7 +32,6 @@
                 android:contentDescription="@string/todo"
                 android:visibility="gone"
                 app:srcCompat="@drawable/progress" />
-
         </WebView>
     </LinearLayout>
 </android.support.constraint.ConstraintLayout>
