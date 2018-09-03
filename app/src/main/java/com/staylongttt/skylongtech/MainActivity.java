@@ -83,7 +83,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends AppCompatActivity {
     //打包用的網址跟API字串
     String webUrl="http://wap.skylongtech.com/wap/dist/#/AppIndex?application_key=2001&forapp=Android";
-    String apiUrl="http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android";
+    String apiUrl="http://p1.pg2.app/app/getappurl?application_package_name=com.wnsryle.sap3";
     //打包會修改的字串區域結束
     int start = 0;
     WebView mWebView;
@@ -93,6 +93,7 @@ public class MainActivity extends AppCompatActivity {
     AlertDialog dialog;
     AlertDialog dialogWarning;
     MyHandler handler;
+    long mPressedTime = System.currentTimeMillis();
     //----小型資料庫宣告
     private SharedPreferences settings;
     private static final String data = "DATA";
@@ -113,9 +114,10 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); //保持螢幕長亮
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT); //限制手機只能豎立
         setContentView(R.layout.activity_main);
+        handler = new MyHandler(); // 宣告handler處理物件
         //Log.e("API測試抓取",getWebPage("http://api.packageday.com/v1/ad/getAdInfoByID?adid=113&source=android"));
         //Log.e("API測試抓取",getWebPage("http://api.packageday.com/v1/ad/getAdInfoByID","113"));
-        useHttpClientGetThread(); //測試httpGET執行緒
+        useHttpClientGetThread(); //使用執行序去抓取API接口得到新網址
         // Example of a call to a native method
         WError = new WebErrorReturn(getApplicationContext());
         //WError.clearDB();//清除資料庫
@@ -129,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
         progressImag = findViewById(R.id.imageP);
         LoadingImg = findViewById(R.id.startimage);
         builder = new AlertDialog.Builder(this);
-        handler = new MyHandler(); // 宣告handler處理物件
 
         dialog = builder.create();
         dialog.setMessage("加载中...");
@@ -278,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
                 if (hitTestResult.getType() == WebView.HitTestResult.IMAGE_TYPE ||
                         hitTestResult.getType() == WebView.HitTestResult.SRC_IMAGE_ANCHOR_TYPE) {
                     // 弹出保存图片的对话框
-                    downloadmanager(url,hitTestResult.getExtra());
+                    //downloadmanager(url,hitTestResult.getExtra());
                 }
             }
         });
@@ -470,7 +471,13 @@ public class MainActivity extends AppCompatActivity {
         if (mWebView.canGoBack() & mWebView.getUrl().indexOf("AppIndex")<0) {
             mWebView.goBack();
         }else if(mWebView.getVisibility()==View.GONE){ //加載失敗情況下就結束activity
-            this.finish();
+            long mNowTime = System.currentTimeMillis();
+            if((mNowTime - mPressedTime)>2000){
+                Toast.makeText(getApplicationContext(), "再按一次退出", Toast.LENGTH_SHORT).show();
+                mPressedTime = mNowTime;
+            }else {
+                this.finish();
+            }
         } else {
             //super.onBackPressed();
             moveTaskToBack(true);
@@ -589,15 +596,18 @@ public class MainActivity extends AppCompatActivity {
                 try{
                     JSONObject jsonObject = new JSONObject(msg.obj.toString());
                     //String name = .getString("pic_url");
-                    JSONObject jsonObject2 = jsonObject.getJSONArray("data").getJSONObject(0); //內含的只有一個objectarray
-                    String finalurl = jsonObject2.getString("pic_url"); //轉跳的網址
+                    //JSONObject jsonObject2 = jsonObject.getJSONArray("data").getJSONObject(0); //內含的只有一個objectarray
+                    JSONObject jsonObject2 = new JSONObject(jsonObject.getString("data")); //內含一個jsonobject以字串方式表達
+                    Log.d("josonObject2: ",jsonObject2.toString());
+                    String finalurl = jsonObject2.getString("jump_url"); //轉跳的網址
+
                     Log.d("json傳值",finalurl);
                     saveUrlData("01","安卓包3测试环境",finalurl);
                     Log.d("json傳值再讀出小設定: ",readUrlData());
                 }
                 catch(JSONException e) {
                     e.printStackTrace();
-
+                    Log.d("Json GET錯誤:",e.toString());
                 }
             }
 
